@@ -1,0 +1,1047 @@
+﻿<html>
+<head>
+
+    <link href="~/Content/site.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" href="http://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+          integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+          crossorigin="" />
+    <link href="~/Content/leafletContextMenu.css" rel="stylesheet" />
+    <link rel="stylesheet" href="http://watson.lennardvoogdt.nl/Leaflet.awesome-markers/dist/leaflet.awesome-markers.css" />
+
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+            integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+            crossorigin=""></script>
+    <script src="http://watson.lennardvoogdt.nl/Leaflet.awesome-markers/dist/leaflet.awesome-markers.js"></script>
+
+    <script src="~/scripts/leafletContextMenu.js"></script>
+    <!-- AngularJS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.min.js"></script>
+    <!-- AngularJS Cookies -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular-cookies.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/3.6.6/firebase.js"></script>
+
+    <!-- AngularFire -->
+    <script src="https://cdn.firebase.com/libs/angularfire/2.3.0/angularfire.min.js"></script>
+
+
+
+    <script>
+        function setupFireBase(authOn) {
+             // Initialize Firebase
+            var config = {
+                apiKey: "AIzaSyD2NqPuvLKV5f8_O2h29KPQHROjcSaKIbs",
+                authDomain: "nopantsmiscreated.firebaseapp.com",
+                databaseURL: "https://nopantsmiscreated.firebaseio.com",
+                projectId: "nopantsmiscreated",
+                storageBucket: "",
+                messagingSenderId: "191838254639"
+            };
+            firebase.initializeApp(config);
+            firebase.auth().onAuthStateChanged(function (user) {
+                window.user = user; // user is undefined if no user signed in
+                console.log('Auth Event ' + user);
+            });
+        }
+        setupFireBase(false);
+    </script>
+    <script>
+        var myApp = angular.module('myApp', ["firebase","ngCookies"]);
+
+        //myApp.directive('myDirective', function() {});
+        //myApp.factory('myService', function() {});
+
+        myApp.controller('MyCtrl', ['$scope', '$firebaseArray', '$timeout', '$cookies','$http', function MyCtrl($scope, $firebaseArray, $timeout, $cookies,$http) {
+            $scope.checkInterval = 60000;
+            $scope.timeInMs = 0;
+            var types = firebase.database().ref().child("lookups/locTypes");
+            var zooms = firebase.database().ref().child("lookups/zoomLevels");
+            var ref = firebase.database().ref().child("locations");
+            var srvs = firebase.database().ref().child("servers");
+            // download the data into a local object
+            $scope.Desc = "";
+            $scope.Lat = '0.0';
+            $scope.Long = '0.0';
+            $scope.locType = "Base";
+            $scope.Notes = "";
+            $scope.mapMarkers = {};
+            $scope.mapMarkerGroups = {};
+            var user = firebase.auth().currentUser;
+
+            if (user) {
+                $scope.isLoggedIn = true;
+                $scope.userName = user.displayName;
+            } else {
+                $scope.isLoggedIn = false;
+                $scope.userName = "";
+            }
+            $scope.isLoggedIn = false;
+            $scope.selectedGroups = {
+                group: {}
+            };
+            $scope.mapIcons = {};
+            $scope.mapClicked = false;
+            $scope.showToastr = false;
+            $scope.userName = $cookies.get('userName')
+            if ($scope.userName) {
+
+            }
+            else {
+                $scope.userName = 'Click to Set';
+            }
+            console.log('UserName: ' + $scope.userName);
+            $scope.selectedLoc = {
+                isSelected: false,
+                Key: "",
+                Desc: "",
+                Lat: "",
+                Long: "",
+                Notes: "",
+                Type: "",
+                dtAdded: ""
+            };
+            var checkTimedout = function () {
+                $scope.timeInMs += $scope.checkInterval;
+                console.log('Checking Timed Out Locations Total#: ' + $scope.locations.length);
+                angular.forEach($scope.locations, function (location) {
+                    if (location.dtExpire && location.dtExpire > 0)
+                    {
+                        var now = moment();
+                        if (location.dtExpire <= now.unix() && $scope.isLoggedIn)
+                        {
+                            console.log('Location is Expired ' + location.$id);
+                            $scope.removeLocation(location.$id);
+                        }
+                    }
+                })
+                angular.forEach($scope.servers, function (server) {
+                    var numPlayerBefore = server.NumPlayers;
+                    console.log('Checking Server Population: ' + server.$id);
+                    $scope.refreshServer(server.$id,true);
+                   
+                })
+                $timeout(checkTimedout, $scope.checkInterval );
+            }
+            //Intial Start
+            $timeout(checkTimedout, $scope.checkInterval )
+            $scope.zooms = $firebaseArray(zooms);
+            $scope.locTypes = $firebaseArray(types);
+            $scope.locations = $firebaseArray(ref);
+            $scope.servers = $firebaseArray(srvs);
+            $scope.getMarkerIcon = function (locTypeKey) {
+                var icon = $scope.mapIcons[locTypeKey];
+                //console.log(locTypeKey);
+                if (icon === undefined) {
+                    return $scope.mapIcons['Base'];
+                }
+                else {
+                    return icon;
+                }
+
+
+            };
+            $scope.locTypes.$watch(function (event) {
+                //console.log(event);
+                var rec = $scope.locTypes.$getRecord(event.key);
+                if (event.event == "child_added") {
+                    if (rec.icon === undefined) {
+                        $scope.mapIcons[rec.$id] = {
+                            icon: L.AwesomeMarkers.icon({
+                                icon: 'star',
+                                markerColor: 'blue',
+                                iconColor: 'white',
+                                prefix: 'ion'
+
+                            })
+                        };
+
+                    }
+                    else {
+                        // add icons to list
+                        $scope.mapIcons[rec.$id] = {
+                            icon: L.AwesomeMarkers.icon({
+                                icon: rec.icon,
+                                markerColor: rec.markerColor,
+                                iconColor: rec.iconColor,
+                                prefix: rec.prefix
+                            })
+                        };
+                    }
+                }
+                if (event.event == "child_changed") {
+                    var rec = $scope.locTypes.$getRecord(event.key);
+                    var icon = $scope.mapIcons[rec.$id];
+                    icon.icon = rec.icon;
+                    icon.markerColor = rec.markerColor;
+                    icon.iconColor = rec.iconColor;
+                    icon.prefix = rec.prefix;
+                }
+            });
+            $scope.locations.$loaded()
+                .then(function (x) {
+                    console.log('Locations Loaded');
+                    $scope.showToastr = true;
+                })
+                .catch(function (error) {
+                    console.log("Error:Loading Locations", error);
+                });
+            $scope.locTypes.$loaded()
+                .then(function (x) {
+                    console.log('Location Types Loaded');
+                    var legend = L.control({ position: 'topright' });
+
+                    legend.onAdd = function (map) {
+
+                        var div = L.DomUtil.create('div', 'info legend');
+
+                        // loop through our density intervals and generate a label with a colored square for each interval
+                        for (var i = 0; i < x.length; i++) {
+                            div.innerHTML +=
+                                '<i class="' + $scope.cssLocType(x[i].$id) + '"></i> ' + x[i].Desc + '<br>';
+                            var key = x[i].$id;
+                            var item = x[i];
+                            
+                            $scope.map.contextmenu.addItem({
+                                text: x[i].Desc,
+                                iconCls: x[i].icon,
+                                iconPrefix: x[i].prefix,
+                                clickContextKey: item.$id.toString(),
+                                callback: quickAdd
+                                
+                            });
+                        }
+
+                        return div;
+                    };
+                    legend.addTo($scope.map);
+                })
+                .catch(function (error) {
+                    console.log("Error:Loading Location Types", error);
+                });
+            $scope.openAddServer = function () {
+                $('#addServerModal').modal('show');
+            }
+            $scope.addServer = function (isValid) {
+                if (isValid) {
+                    $http({
+                        method: 'GET',
+                        url: '/api/ServerInfo/?Port=' + $scope.serverPort + '&IP=' + $scope.serverIP
+                    }).then(function successCallback(response) {
+                        //console.log(response.data);
+                        // this callback will be called asynchronously
+                        // when the response is available
+                        $scope.servers.$add({
+                            MaxPlayers: response.data.MaxPlayers,
+                            NumPlayers: response.data.NumPlayers,
+                            DtLastUpdated: moment().toString(),
+                            Name: response.data.Name,
+                            IP: $scope.serverIP,
+                            Port: $scope.serverPort
+                        }).then(function (ref) {
+                            //console.log(ref);
+                            $('#addServerModal').modal('hide');
+                        });
+
+                    }, function errorCallback(response) {
+                        console.log('Error ' + resposne);
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                    });
+                }
+            }
+            $scope.refreshServer = function (key,alertIfChanged) {
+                var serverLoc = $scope.servers.$getRecord(key);
+                console.log('Refreshing Server ' + key);
+                if (serverLoc) {
+                    $http({
+                        method: 'GET',
+                        url: '/api/ServerInfo/?Port=' + serverLoc.Port + '&IP=' + serverLoc.IP
+                }).then(function successCallback(response) {
+                            //console.log(response.data);
+                            // this callback will be called asynchronously
+                            // when the response is available
+                            if (alertIfChanged) {
+                                if (response.data.NumPlayers > serverLoc.NumPlayers) {
+                                    toastr.warning(response.data.Name + ' Population rose to ' + response.data.NumPlayers + '/' + response.data.MaxPlayers);
+                                }
+                                else if (response.data.NumPlayers < serverLoc.NumPlayers) {
+                                    toastr.info(response.data.Name + ' Population dropped to ' + response.data.NumPlayers + '/' + response.data.MaxPlayers);
+                                }
+                            }
+                            if ($scope.isLoggedIn === true) {
+                                serverLoc.MaxPlayers = response.data.MaxPlayers;
+                                serverLoc.TimeOfDay = response.data.TimeOfDay;
+                                serverLoc.NumPlayers = response.data.NumPlayers;
+                                serverLoc.DtLastUpdated = moment().toString();
+                                serverLoc.Name = response.data.Name;
+                                $scope.servers.$save(serverLoc);
+                            }
+                            
+
+                        }, function errorCallback(response) {
+                            console.log('Error ' + resposne);
+                            // called asynchronously if an error occurs
+                            // or server returns response with an error status.
+                        });
+                }
+            }
+            $scope.locations.$watch(function (event) {
+
+                //console.log(event);
+                if (event.event == "child_added") {
+                    // work here
+                    var rec = $scope.locations.$getRecord(event.key);
+                    console.log("Location Added " + event.key)
+                    var iconObj = $scope.mapIcons[rec.Type];
+                    //console.log(icon);
+                    iconObj.contextmenu = true;
+                    iconObj.contextmenuItems= [{
+                        text: rec.Desc + ': ',
+                        index: 0
+                    }, {
+                        text: 'Delete',
+                        index: 1,
+                        iconCls: 'trash',
+                        iconPrefix: 'fa',
+                        clickContextKey: event.key,
+                        callback: quickDelete
+                    }, {
+                            text: 'Edit',
+                            index: 2,
+                            iconCls: 'pencil',
+                            iconPrefix: 'fa',
+                            clickContextKey: event.key,
+                            callback: editLocation
+                    },
+                    {
+                        separator: true,
+                        index: 3
+                    }];
+                    
+                    var mkr = L.marker([rec.Lat, rec.Long], iconObj);//.addTo($scope.map);
+                    rec.marker = mkr;
+                    var mkrGroup = $scope.mapMarkerGroups[rec.Type];
+                    if (mkrGroup) {
+                        mkrGroup.addLayer(mkr);
+                        $scope.selectedGroups.group[rec.Type].count++;
+                    }
+                    else {
+                        mkrGroup = L.layerGroup();//.addTo($scope.map);
+                        mkrGroup.addLayer(mkr);
+                        mkrGroup.addTo($scope.map);
+                        $scope.selectedGroups.group[rec.Type] = { selected: 'true', count: 1 };
+                        $scope.mapMarkerGroups[rec.Type] = mkrGroup;
+
+                    }
+                    $scope.mapMarkers[event.key] = mkr;
+                    var notes = rec.Notes;
+                    if (notes === undefined)
+                        notes = "";
+
+                    var typeData = '<i class="' + $scope.cssLocType(rec.Type) + '"></i>  ' + $scope.locTypeDesc(rec.Type);
+                    //mkr.bindPopup('<b>' + rec.Desc + '</b> <br/> <i>' + notes + '</i><br/>Added: ' + $scope.displayDate(rec.dtAdded) + '<br/>' + typeData + "<button type='button' class='btn btn-sm btn-primary'data-toggle='modal' data-target='#editLocModal'>Edit</button>");
+                    mkr.on('click', L.bind($scope.openEdit, null, rec.$id));
+                    if ($scope.showToastr) {
+                        if ($scope.isLoggedIn && $scope.userName === rec.createdBy) {
+                            console.log('Skipping toastr because I added it');
+                        }
+                        else {
+                            toastr.options = {
+                                "closeButton": true,
+                                "timeOut": "20000",
+                                "extendedTimeOut": "0",
+                                preventDuplicates: true
+                            };
+                            toastr.options.onclick = function () {
+
+                                $scope.map.setView([rec.Lat, rec.Long], $scope.map.maxZoom);
+                            };
+                            toastr.info(typeData + ' Added by ' + rec.createdBy);
+                        }
+                    }
+                }
+                if (event.event == "child_removed") {
+                    console.log("Location Updated " + event.key)
+                    var marker = $scope.mapMarkers[event.key];
+                    var rec = $scope.locations.$getRecord(event.key);
+                    //console.log(marker);
+                    marker.remove();
+                }
+
+            });
+
+            $scope.removeLocation = function (key) {
+                //console.log("Removing " + key);
+                if ($scope.isLoggedIn === false)
+                {
+                    $('#errorModal').modal('show');
+                    return;
+                }
+                var rec = $scope.locations.$getRecord(key);
+                console.log(rec);
+                $scope.locations.$remove($scope.locations.$indexFor(key));
+            };
+            $scope.saveUsername = function (isValid) {
+                var exp = moment().add(1, 'y').toDate();
+                if (isValid) {
+                    $cookies.put('userName', $scope.userName, {
+                        expires: exp
+                    });
+                    $('#setUserNameModal').modal('hide');
+                }
+            };
+            
+            $scope.addLocation = function (isValid) {
+                if ($scope.isLoggedIn === false) {
+                    $('#errorModal').modal('show');
+                    return;
+                }
+                if (isValid) {
+                    //console.log('Adding' + $scope.Desc);
+                    c
+                    var typ = $scope.getLocType($scope.locType.$id);
+                    var expDT = 0;
+                    if (typ.timeoutSec && typ.timeoutSec > 0) {
+                        expDT = moment().add(typ.timeoutSec, 's').unix();
+                    }
+                    $scope.locations.$add({
+                        Desc: $scope.Desc,
+                        Lat: $scope.Lat,
+                        Long: $scope.Long,
+                        Notes: $scope.Notes,
+                        Type: $scope.locType.$id,
+                        dtAdded: now.unix(),
+                        dtExpire: expDT,
+                        createdBy: window.user.displayName
+                    }).then(function (ref) {
+                        //console.log(ref);
+                        $('#addModal').modal('hide');
+                    });
+                }
+                else {
+
+                }
+            };
+            $scope.openEdit = function (key) {
+                var rec = $scope.locations.$getRecord(key);
+                $scope.selectedLoc.Key = key;
+                $scope.selectedLoc.Desc = rec.Desc;
+                $scope.selectedLoc.Lat = rec.Lat;
+                $scope.selectedLoc.Long = rec.Long;
+                $scope.selectedLoc.Type = rec.Type;
+                $scope.selectedLoc.Notes = rec.Notes;
+                //$scope.$apply();
+                //$('#editModal').modal('show');
+            };
+            $scope.updateLocation = function (isValid) {
+                console.log('Trying to update location');
+                if (isValid) {
+                    var rec = $scope.locations.$getRecord($scope.selectedLoc.Key);
+                    console.log(rec);
+                    //rec.Type = $scope.selectedLoc.Type;
+                    //rec.Notes += $scope.selectedLoc.Notes;
+                    //rec.Desc = $scope.selectedLoc.Desc;
+                    //rec.Type = $scope.selectedLoc.Typ;
+                    $scope.locations.$save(rec).then(function (ref) {
+                        console.log('Location Saved');
+                    });;
+                    
+                    
+                }
+                else {
+
+                }
+            };
+            $scope.hideMapPop = function () {
+                $scope.map.closePopup();
+            };
+            $scope.openAddLocation = function (e) {
+                $scope.Lat = e.latlng.lat.toString();
+                $scope.Long = e.latlng.lng.toString();
+                $scope.mapClicked = true;
+                $scope.$apply();
+                $('#addLocModal').modal('show');
+                //popup.setLatLng(e.latlng)
+                //    .setContent("Map Location <br/>" + e.latlng.toString() + "<br/> <button type='button' class='btn btn-sm btn-primary' data-toggle='modal' data-target='#addLocModal'>Add</button>")
+                //    .openOn(map);
+
+            };
+            $scope.getLocType = function (typeKey) {
+                var locType = $scope.locTypes.$getRecord(typeKey);
+                return locType;
+            }
+            $scope.cssLocType = function (type) {
+                var icon = $scope.locTypes.$getRecord(type);
+                return icon.prefix + ' ' + icon.prefix + '-' + icon.icon;
+
+
+            };
+            $scope.formatTime = function (gameTime) {
+                var now = moment();
+                var timeParts = gameTime.split(":");
+                now.hours(timeParts[0]);
+                now.minutes(timeParts[1]);
+                return now.format("h:m A");
+            }
+            $scope.locTypeDesc = function (type) {
+                var icon = $scope.locTypes.$getRecord(type);
+                return icon.Desc;
+            };
+            $scope.displayDate = function (epoc) {
+                if (epoc === undefined) {
+                    return "";
+                }
+                else if(epoc === 0 ){
+                    return "";
+                }
+                else {
+                    var dtAdded = moment.unix(epoc);
+                    return dtAdded.format("dddd, MMMM Do YYYY, h:mm:ss a");
+                }
+
+
+            };
+            $scope.displayDateFromNow = function (epoc) {
+                if (epoc === undefined) {
+                    return "";
+                }
+                else if (epoc === 0) {
+                    return "never";
+                }
+                else {
+                    var dtAdded = moment.unix(epoc);
+                    return dtAdded.fromNow();
+                }
+
+
+            };
+            $scope.zoomTo = function (lat, long, zl) {
+                $scope.map.setView([lat, long], zl);
+            
+            };
+            $scope.getTypeCount = function (type) {
+                var typeGroup = $scope.selectedGroups.group[type];
+                if (typeGroup)// && typeGroup.count)
+                {
+                    //console.log(typeGroup);
+                    return typeGroup.count;
+                }
+                else
+                    return 0;
+                //return $scope.selectedGroups.group[type].count;
+            }
+            $scope.toggleType = function (type) {
+                //alert('Toggling Type' + type);
+                var groupLayer = $scope.selectedGroups.group[type];
+
+                if (groupLayer.selected === 'true') {
+                    var group = $scope.mapMarkerGroups[type];
+                    if(group){
+                        console.log(group);
+                        group.remove();
+                        group.addTo($scope.map);
+                    }
+                }
+                else {
+                    var group = $scope.mapMarkerGroups[type];
+                    if (group) {
+                        console.log(group);
+                        group.remove();
+                    }
+                    
+                }
+            };
+            $scope.doLogin = function () {
+                var provider = new firebase.auth.GoogleAuthProvider();
+                        firebase.auth().signInWithPopup(provider).then(function (result) {
+                            // This gives you a Google Access Token. You can use it to access the Google API.
+                            var token = result.credential.accessToken;
+                            // The signed-in user info.
+                            var user = result.user;
+                            // ...
+                            console.log('Username Before ' + $scope.userName);
+                            $scope.userName = user.displayName;
+                            console.log('Username After ' + $scope.userName);
+                            $scope.isLoggedIn = true;
+                            $('#errorModal').modal('hide');
+                            $scope.$apply();
+
+                        }).catch(function (error) {
+                            // Handle Errors here.
+                            var errorCode = error.code;
+                            var errorMessage = error.message;
+                            // The email of the user's account used.
+                            var email = error.email;
+                            // The firebase.auth.AuthCredential type that was used.
+                            var credential = error.credential;
+                            // ...
+                            });
+                
+            }
+            var map = L.map('image-map', {
+                minZoom: 1,
+                maxZoom: 5,
+                center: [-150.83333, 121],
+                zoom: 2,
+                crs: L.CRS.Simple,
+                contextmenu: true,
+                contextmenuWidth: 170,
+                contextmenuItems: [{
+                    text: 'Show coordinates',
+                    callback: showCoordinates
+                }, {
+                    text: 'Center map here',
+                    callback: centerMap
+                    },
+                {
+                    text: 'Add Location',
+                    iconCls: 'plus',
+                    iconPrefix: 'fa',
+                    callback: $scope.openAddLocation
+                },
+                    '-', {
+                    text: 'Zoom in',
+                    iconCls: 'search-plus',
+                    iconPrefix: 'fa',
+                    callback: zoomIn
+                }, {
+                    text: 'Zoom out',
+                    iconCls: 'search-minus',
+                    iconPrefix:'fa',
+                    callback: zoomOut
+                },{
+                    separator: true
+                }]
+            });
+            //console.log(map.contextmenu);
+            function showCoordinates(e) {
+                alert(e.latlng);
+            }
+
+            function centerMap(e) {
+                $scope.map.panTo(e.latlng);
+            }
+
+            function zoomIn(e) {
+                $scope.map.zoomIn();
+            }
+
+            function zoomOut(e) {
+                $scope.map.zoomOut();
+            }
+            function editLocation(e, v) {
+                if ($scope.isLoggedIn === false) {
+                    $('#errorModal').modal('show');
+                    return;
+                }
+                console.log('QuickDelete ', e);
+                console.log('Context Key ', v);
+                alert('Not Implemneted yet');
+            }
+            function quickDelete(e, v) {
+                if ($scope.isLoggedIn === false) {
+                    $('#errorModal').modal('show');
+                    return;
+                }
+                console.log('QuickDelete ', e);
+                console.log('Context Key ', v);
+                $scope.removeLocation(v);
+            }
+            function quickAdd(e,v) {
+                if ($scope.isLoggedIn === false) {
+                    $('#errorModal').modal('show');
+                    return;
+                }
+                console.log('QuickAdd ', e);
+                console.log('Context Key ', v);
+                var typ = $scope.getLocType(v);
+                var now = moment();
+                var expDT = 0;
+                console.log('ExpireSecs ' + typ.timeoutSec);
+                if (typ.timeoutSec && typ.timeoutSec > 0)
+                {
+                    expDT = moment().add(typ.timeoutSec, 's').unix();
+                }
+                $scope.locations.$add({
+                    Desc: "Quick Add",
+                    Lat: e.latlng.lat,
+                    Long: e.latlng.lng,
+                    Notes: "",
+                    Type: v,
+                    dtAdded: now.unix(),
+                    dtExpire: expDT,
+                    createdBy: window.user.displayName
+                }).then(function (ref) {
+                    //console.log(ref);
+                    //$('#addModal').modal('hide');
+                });
+            }
+            var w = 4095,
+                h = 4095,
+                url = 'http://www.csprance.com/shots/islands_sat.jpg';
+            var southWest = map.unproject([0, h], map.getMaxZoom() - 1);
+            var northEast = map.unproject([w, 0], map.getMaxZoom() - 1);
+            var bounds = new L.LatLngBounds(southWest, northEast);
+            $scope.map = map;
+
+            // add the image overlay,
+            // so that it covers the entire map
+            L.imageOverlay(url, bounds).addTo(map);
+            L.AwesomeMarkers.Icon.prototype.options.prefix = '';
+            // tell leaflet that the map is exactly as big as the image
+            map.setMaxBounds(bounds);
+            var popup = L.popup();
+
+            $scope.map = map;
+            
+            //map.on('contextmenu', $scope.dblClickMap);
+
+        }]);
+
+        angular.element(document).ready(function () {
+            angular.bootstrap(document, ['myApp'], { strictDi: false });
+        });
+    </script>
+</head>
+<body>
+    <div ng-controller="MyCtrl">
+
+        <nav class="navbar navbar-default">
+            <div class="container-fluid">
+                <!-- Brand and toggle get grouped for better mobile display -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">Miscreated Map Tracker</a>
+                    
+                </div>
+                
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                    
+                    <p class="navbar-text navbar-right"  ng-show="isLoggedIn">Welcome Back <button type="button" class="btn btn-warning btn-xs">{{userName}}</button></p>    
+                    <p class="navbar-text navbar-right"><button type="button" ng-show="isLoggedIn ===false" class="btn btn-warning btn-xs" ng-click="doLogin()">Login with Google</button></p>
+                    <form class="navbar-form navbar-left hidden">
+                        <button type="button" class="btn btn-primary btn-sm hidden" data-toggle="modal" data-target="#addLocModal">Add Location</button>
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" data-toggle="toggle">
+                                Option one is enabled
+                            </label>
+                        </div>
+                    </form>
+                </div><!-- /.navbar-collapse -->
+            </div><!-- /.container-fluid -->
+        </nav>
+        <!-- errorModal Modal -->
+        <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">Error</h4>
+                    </div>
+                    <div class="modal-body">
+                            <div class="alert alert-danger" role="alert">You must be logged in to perform this action!</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="doLogin()">Login with Google</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Add Server Modal -->
+        <div class="modal fade" id="addServerModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">Add Server</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" name="addServerForm">
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Server IP</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Enter the IP of the Server" ng-model="serverIP" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Port</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Enter the port of the Server" ng-model="serverPort" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="addServer(addServerForm.$valid)">Add Server</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Username Modal -->
+        <div class="modal fade" id="setUserNameModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">Set Your Username</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" name="usernameForm">
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Your Name</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Enter your name" ng-model="userName" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="saveUsername(usernameForm.$valid)">Save Username</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Add Modal -->
+        <div class="modal fade" id="addLocModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">Add Location {{addLocationForm.$valid}}</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" name="addLocationForm">
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Description</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="description" ng-model="Desc" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Latitude</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Latitude" ng-model="Lat" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Longitude</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Longitude" ng-model="Long" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="inputEmail3" class="col-sm-2 control-label">Type {{locType.$id}}</label>
+                                <div class="col-sm-10">
+                                    <select name="quarter" ng-model="locType" ng-selected="locType" class="form-control"
+                                            ng-options="type.Desc for type in locTypes" required></select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Notes</label>
+                                <div class="col-sm-10">
+                                    <textarea class="form-control" rows="3" ng-model="Notes"></textarea>
+
+                                </div>
+                            </div>
+                            <div class="alert alert-warning alert-dismissible fade in" role="alert" ng-show="addLocationForm.$valid === false">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button> <strong>Error Adding Location</strong> Check to ensure all required objects are supplied
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="addLocation(addLocationForm.$valid)">Add Location</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Edit Modal -->
+        <div class="modal fade" id="editLocModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="editModalLabel">Edit Location {{editLocationForm.$valid}}</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form-horizontal" name="editLocationForm">
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Description</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="description" ng-model="selectedLoc.Desc" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Latitude</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Latitude" ng-model="selectedLoc.Lat" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Longitude</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" id="inputEmail3" placeholder="Longitude" ng-model="selectedLoc.Long" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="inputEmail3" class="col-sm-2 control-label">Type {{locType.$id}}</label>
+                                <div class="col-sm-10">
+                                    <select name="quarter" ng-model="locType" ng-selected="selectedLoc.Type" class="form-control"
+                                            ng-options="type.Desc for type in locTypes" required></select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="inputEmail3" class="col-sm-2 control-label">Notes</label>
+                                <div class="col-sm-10">
+                                    <textarea class="form-control" rows="3" ng-model="selectedLoc.Notes"></textarea>
+
+                                </div>
+                            </div>
+                            <div class="alert alert-warning alert-dismissible fade in" role="alert" ng-show="editLocationForm.$valid === false">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button> <strong>Error Adding Location</strong> Check to ensure all required objects are supplied
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="updateLocation(editLocationForm.$valid)">Edit Location</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="">
+            <ul class="nav nav-pills" role="tablist">
+                <li role="presentation" class="active"><a href="#map" aria-controls="map" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span> Map</a></li>
+                <li role="presentation"><a href="#locations" aria-controls="locations" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Locations</a></li>
+                <li role="presentation"><a href="#servers" aria-controls="servers" role="tab" data-toggle="tab"><i class="fa fa-server fa-lg"></i> Servers</a></li>
+                <li role="presentation" class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span> Quick Zoom <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="zoom in zooms"><a ng-click="zoomTo(zoom.Lat,zoom.Long,zoom.ZoomLevel)">{{zoom.Desc}}</a></li>
+                    </ul>
+                </li>
+                <li role="presentation" class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Layers <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="type in locTypes">
+
+                            <label ng-show="getTypeCount(type.$id) > 0">
+                                <input type="checkbox" data-toggle="toggle" ng-model="selectedGroups.group[type.$id].selected" ng-true-value="'true'" ng-false-value="'false'" ng-change="toggleType(type.$id)">{{type.Desc}} - <span class="badge">{{getTypeCount(type.$id)}}</span>
+                            </label>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+            <!-- Tab panes -->
+            <div class="tab-content">
+                <div role="tabpanel" class="tab-pane active well" id="map">
+                    <div id="image-map"></div>
+                </div>
+                
+                <div role="tabpanel" class="tab-pane well" id="locations">
+                    <div class="panel panel-default panel-info">
+                        <!-- Default panel contents -->
+                        <div class="panel-heading">Current Locations</div>
+                        <div class="panel-body">
+                           
+                        </div>
+
+                        <!-- Table -->
+                        <table class="table table-hover table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Description</th>
+                                    <th>Location</th>
+                                    <th>Type</th>
+                                    <th>AddedOn</th>
+                                    <th>Created By</th>
+                                    <th>TimeoutOn</th>
+                                    <th>Notes</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="location in locations">
+                                    <th scope="row">{{$index + 1}}</th>
+                                    <td>{{ location.Desc }}</td>
+                                    <td>({{ location.Lat }},{{ location.Long }})</td>
+                                    <td><i class="{{cssLocType(location.Type)}}"></i>  {{ locTypeDesc(location.Type) }}</td>
+                                    <td>{{ displayDate(location.dtAdded) }}<br />{{ displayDateFromNow(location.dtAdded) }}</td>
+                                    <td>{{ location.createdBy }}</td>
+                                    <td>{{ displayDate(location.dtExpire) }}<br />{{ displayDateFromNow(location.dtExpire) }}</td>
+                                    <td>{{ location.Notes }}</td>
+                                    <td><a class="btn btn-danger"  ng-show="isLoggedIn" ng-click="removeLocation(location.$id)"><i class="fa fa-trash-o fa-lg"></i> Delete</a></td>
+                                </tr>
+                                <tr>
+                            </tbody>
+                        </table>
+                    </div>
+                   
+                </div>
+                <div role="tabpanel" class="tab-pane well" id="servers">
+                    <div class="panel panel-default panel-info">
+                        <!-- Default panel contents -->
+                        <div class="panel-heading">Game Servers <button type="button" ng-show="isLoggedIn ===false" class="btn btn-warning btn-xs" ng-click="openAddServer()">Add Server</button></p></div>
+                        <div class="panel-body">
+
+                        </div>
+
+                        <!-- Table -->
+                        <table class="table table-hover table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Players</th>
+                                    <th>TimeOfDay</th>
+                                    <th>Last Updated</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="server in servers">
+                                    <th scope="row">{{$index + 1}}</th>
+                                    <td>{{ server.Name }}</td>
+                                    <td>({{ server.NumPlayers }}/{{ server.MaxPlayers }})</td>
+                                    <td>{{ formatTime(server.TimeOfDay) }}</td>
+                                    <td>{{ server.DtLastUpdated }}</td>
+                                    <td>
+                                        <a class="btn btn-info" ng-click="refreshServer(server.$id,true)"><i class="fa fa-refresh fa-lg"></i> Refresh</a>
+                                        <div class="checkbox hidden">
+                                            <label class="checkbox-inline">
+                                                <input type="checkbox" checked data-toggle="toggle"> First
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
+        <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+</body>
+</html>

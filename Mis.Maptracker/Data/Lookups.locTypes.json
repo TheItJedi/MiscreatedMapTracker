@@ -1,0 +1,90 @@
+{
+  "5Ton": {
+    "Desc": "5-Ton Truck Spawn",
+    "icon": "truck",
+    "iconColor": "black",
+    "markerColor": "darkgreen",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "ATV": {
+    "Desc": "ATV Spawn",
+    "icon": "motorcycle",
+    "iconColor": "black",
+    "markerColor": "orange",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "Base": {
+    "Desc": "Player Base",
+    "icon": "crosshairs",
+    "iconColor": "black",
+    "markerColor": "darkred",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "Bus": {
+    "Desc": "Bus Spawn",
+    "icon": "bus",
+    "iconColor": "black",
+    "markerColor": "blue",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "Car": {
+    "Desc": "Car Spawn",
+    "icon": "car",
+    "iconColor": "black",
+    "markerColor": "blue",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "HomeBase": {
+    "Desc": "Clan Base",
+    "icon": "home",
+    "iconColor": "black",
+    "markerColor": "purple",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "IAMH": {
+    "Desc": "I am here",
+    "icon": "bullseye",
+    "iconColor": "black",
+    "markerColor": "red",
+    "prefix": "fa",
+    "timeoutSec": 30000
+  },
+  "CORPSE": {
+    "Desc": "My Corpse",
+    "icon": "heart",
+    "iconColor": "black",
+    "markerColor": "red",
+    "prefix": "fa",
+    "timeoutSec": 60000
+  },
+  "RaidedBase": {
+    "Desc": "Raided Base",
+    "icon": "check",
+    "iconColor": "black",
+    "markerColor": "blue",
+    "prefix": "fa",
+    "timeoutSec": 0
+  },
+  "Tent": {
+    "Desc": "Tent Spawn",
+    "icon": "tent",
+    "iconColor": "black",
+    "markerColor": "orange",
+    "prefix": "glyphicon",
+    "timeoutSec": 0
+  },
+  "Truck": {
+    "Desc": "Truck Spawn",
+    "icon": "truck",
+    "iconColor": "black",
+    "markerColor": "orange",
+    "prefix": "fa",
+    "timeoutSec": 0
+  }
+}
