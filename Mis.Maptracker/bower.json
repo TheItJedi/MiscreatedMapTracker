@@ -1,0 +1,9 @@
+{
+  "name": "asp.net",
+  "private": true,
+  "dependencies": {
+    "angular": "1.6.1",
+    "angular-cookies": "1.6.1",
+    "bootstrap":"3.3.7"
+  }
+}

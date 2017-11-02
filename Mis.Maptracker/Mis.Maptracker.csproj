@@ -107,8 +107,10 @@
     <Content Include="Content\leafletContextMenu.css" />
     <Content Include="Content\site.css" />
     <Content Include="Global.asax" />
-    <Content Include="scripts\controller.js" />
+    <Content Include="scripts\app\app.js" />
+    <Content Include="scripts\FormatCoords.js" />
     <Content Include="scripts\leafletContextMenu.js" />
+    <Content Include="scripts\MyWork.js" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -129,6 +131,14 @@
     <Content Include="Views\Home\Index.cshtml" />
     <None Include="Properties\PublishProfiles\mismaptracker - Web Deploy.pubxml" />
     <Content Include="Properties\webjobs-list.json" />
+    <Content Include="Views\partials\_addServerModal.cshtml" />
+    <Content Include="Views\partials\FindGameLocation.cshtml" />
+    <Content Include="Views\partials\Navigation.cshtml" />
+    <Content Include="Views\partials\LocationModals.cshtml" />
+    <Content Include="Views\partials\tablist\Navigation.cshtml" />
+    <Content Include="Views\partials\tablist\LocationsPanel.cshtml" />
+    <Content Include="Views\partials\tablist\ServersPanel.cshtml" />
+    <Content Include="scripts\tsconfig.json" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -141,7 +151,7 @@
     <Folder Include="Models\" />
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="scripts\Location.ts" />
+    <TypeScriptCompile Include="scripts\Domain\Location.ts" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />

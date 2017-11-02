@@ -1,0 +1,41 @@
+﻿<div role="tabpanel" class="tab-pane well" id="locations">
+    <div class="panel panel-default panel-info">
+        <!-- Default panel contents -->
+        <div class="panel-heading">Current Locations</div>
+        <div class="panel-body">
+
+        </div>
+
+        <!-- Table -->
+        <table class="table table-hover table-condensed">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Location</th>
+                    <th>Type</th>
+                    <th>AddedOn</th>
+                    <th>Created By</th>
+                    <th>TimeoutOn</th>
+                    <th>Notes</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="location in locations">
+                    <th scope="row">{{$index + 1}}</th>
+                    <td>{{ location.Desc }}</td>
+                    <td>({{ location.Lat }},{{ location.Long }})<br />{{formatDMSCoords(location.Lat,location.Long)}}</td>
+                    <td><i class="{{cssLocType(location.Type)}}"></i>  {{ locTypeDesc(location.Type) }}</td>
+                    <td>{{ displayDate(location.dtAdded) }}<br />{{ displayDateFromNow(location.dtAdded) }}</td>
+                    <td>{{ location.createdBy }}</td>
+                    <td>{{ displayDate(location.dtExpire) }}<br />{{ displayDateFromNow(location.dtExpire) }}</td>
+                    <td>{{ location.Notes }}</td>
+                    <td><a class="btn btn-danger" ng-show="isLoggedIn" ng-click="removeLocation(location.$id)"><i class="fa fa-trash-o fa-lg"></i> Delete</a></td>
+                </tr>
+                <tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>

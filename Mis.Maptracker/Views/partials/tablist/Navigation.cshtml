@@ -1,0 +1,22 @@
+﻿<ul class="nav nav-pills" role="tablist">
+    <li role="presentation" class="active"><a href="#map" aria-controls="map" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span> Map</a></li>
+    <li role="presentation"><a href="#locations" aria-controls="locations" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Locations</a></li>
+    <li role="presentation"><a href="#servers" aria-controls="servers" role="tab" data-toggle="tab"><i class="fa fa-server fa-lg"></i> Servers</a></li>
+    <li role="presentation" class="dropdown">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span> Quick Zoom <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+            <li ng-repeat="zoom in zooms"><a ng-click="zoomTo(zoom.Lat,zoom.Long,zoom.ZoomLevel)">{{zoom.Desc}}</a></li>
+        </ul>
+    </li>
+    <li role="presentation" class="dropdown">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-tasks" aria-hidden="true"></span> Layers <span class="caret"></span></a>
+        <ul class="dropdown-menu">
+            <li ng-repeat="type in locTypes">
+
+                <label ng-show="getTypeCount(type.$id) > 0">
+                    <input type="checkbox" data-toggle="toggle" ng-model="selectedGroups.group[type.$id].selected" ng-true-value="'true'" ng-false-value="'false'" ng-change="toggleType(type.$id)">{{type.Desc}} - <span class="badge">{{getTypeCount(type.$id)}}</span>
+                </label>
+            </li>
+        </ul>
+    </li>
+</ul>

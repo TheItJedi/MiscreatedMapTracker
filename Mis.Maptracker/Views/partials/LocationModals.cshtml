@@ -1,0 +1,112 @@
+﻿ <!-- Add Modal -->
+<div class="modal fade" id="addLocModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Add Location {{addLocationForm.$valid}}</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal" name="addLocationForm">
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Description</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="description" ng-model="Desc" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Latitude</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="Latitude" ng-model="Lat" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Longitude</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="Longitude" ng-model="Long" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="inputEmail3" class="col-sm-2 control-label">Type {{locType.$id}}</label>
+                        <div class="col-sm-10">
+                            <select name="quarter" ng-model="locType" ng-selected="locType" class="form-control"
+                                    ng-options="type.Desc for type in locTypes" required></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Notes</label>
+                        <div class="col-sm-10">
+                            <textarea class="form-control" rows="3" ng-model="Notes"></textarea>
+
+                        </div>
+                    </div>
+                    <div class="alert alert-warning alert-dismissible fade in" role="alert" ng-show="addLocationForm.$valid === false">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button> <strong>Error Adding Location</strong> Check to ensure all required objects are supplied
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" ng-click="addLocation(addLocationForm.$valid)">Add Location</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Modal -->
+<div class="modal fade" id="editLocModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="editModalLabel">Edit Location {{editLocationForm.$valid}}</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal" name="editLocationForm">
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Description</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="description" ng-model="selectedLoc.Desc" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Latitude</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="Latitude" ng-model="selectedLoc.Lat" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Longitude</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="inputEmail3" placeholder="Longitude" ng-model="selectedLoc.Long" ng-required="true" ng-minlength="3" ng-maxlength="30">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="inputEmail3" class="col-sm-2 control-label">Type {{locType.$id}}</label>
+                        <div class="col-sm-10">
+                            <select name="quarter" ng-model="locType" ng-selected="selectedLoc.Type" class="form-control"
+                                    ng-options="type.Desc for type in locTypes" required></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputEmail3" class="col-sm-2 control-label">Notes</label>
+                        <div class="col-sm-10">
+                            <textarea class="form-control" rows="3" ng-model="selectedLoc.Notes"></textarea>
+
+                        </div>
+                    </div>
+                    <div class="alert alert-warning alert-dismissible fade in" role="alert" ng-show="editLocationForm.$valid === false">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">×</span></button> <strong>Error Adding Location</strong> Check to ensure all required objects are supplied
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" ng-click="updateLocation(editLocationForm.$valid)">Edit Location</button>
+            </div>
+        </div>
+    </div>
+</div>
