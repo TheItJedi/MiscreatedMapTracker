@@ -42,7 +42,25 @@ body {
         margin-right: 8px;
         opacity: 0.7;
     }
-
+    .legend span {
+        width: 30px;
+        height: 18px;
+        float: left;
+        margin-right: 8px;
+        opacity: 0.7;
+    }
+    .legend .empty {
+        color:aliceblue;
+    }
+    .legend .low {
+        color:skyblue;
+    }
+    .legend .med {
+        color:forestgreen;
+    }
+    .legend .high {
+        color:orangered;
+    }
 /* Change cursor when mousing over clickable layer */
 .leaflet-clickable {
     cursor: crosshair !important;

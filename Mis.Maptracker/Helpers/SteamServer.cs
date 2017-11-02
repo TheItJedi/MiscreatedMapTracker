@@ -66,6 +66,7 @@ namespace Mis.Maptracker.Helpers
         public VACFlags VAC { get; set; }
         public string Version { get; set; }
         public ExtraDataFlags ExtraDataFlag { get; set; }
+        public bool IsValid { get; set; }
         #region Extra Data Flag Members
         public ulong GameID { get; set; }           //0x01
         public ulong SteamID { get; set; }          //0x10
@@ -76,45 +77,61 @@ namespace Mis.Maptracker.Helpers
         #endregion
         public A2S_INFO(IPEndPoint ep)
         {
-            UdpClient udp = new UdpClient();
-            udp.Send(REQUEST, REQUEST.Length, ep);
-            MemoryStream ms = new MemoryStream(udp.Receive(ref ep));    // Saves the received data in a memory buffer
-            BinaryReader br = new BinaryReader(ms, Encoding.UTF8);      // A binary reader that treats charaters as Unicode 8-bit
-            ms.Seek(4, SeekOrigin.Begin);   // skip the 4 0xFFs
-            Header = br.ReadByte();
-            Protocol = br.ReadByte();
-            Name = ReadNullTerminatedString(ref br);
-            Map = ReadNullTerminatedString(ref br);
-            Folder = ReadNullTerminatedString(ref br);
-            Game = ReadNullTerminatedString(ref br);
-            ID = br.ReadInt16();
-            Players = br.ReadByte();
-            MaxPlayers = br.ReadByte();
-            Bots = br.ReadByte();
-            ServerType = (ServerTypeFlags)br.ReadByte();
-            Environment = (EnvironmentFlags)br.ReadByte();
-            Visibility = (VisibilityFlags)br.ReadByte();
-            VAC = (VACFlags)br.ReadByte();
-            Version = ReadNullTerminatedString(ref br);
-            ExtraDataFlag = (ExtraDataFlags)br.ReadByte();
-            #region These EDF readers have to be in this order because that's the way they are reported
-            if (ExtraDataFlag.HasFlag(ExtraDataFlags.Port))
-                Port = br.ReadInt16();
-            if (ExtraDataFlag.HasFlag(ExtraDataFlags.SteamID))
-                SteamID = br.ReadUInt64();
-            if (ExtraDataFlag.HasFlag(ExtraDataFlags.Spectator))
+            try
             {
-                SpectatorPort = br.ReadInt16();
-                Spectator = ReadNullTerminatedString(ref br);
+                IsValid = false;
+                using (UdpClient udp = new UdpClient())
+                {
+                    udp.Client.ReceiveTimeout = 20000;
+                    udp.Send(REQUEST, REQUEST.Length, ep);
+                    using (MemoryStream ms = new MemoryStream(udp.Receive(ref ep)))
+                    {// Saves the received data in a memory buffer
+                        BinaryReader br = new BinaryReader(ms, Encoding.UTF8);
+                    // A binary reader that treats charaters as Unicode 8-bit
+                            ms.Seek(4, SeekOrigin.Begin);   // skip the 4 0xFFs
+                        Header = br.ReadByte();
+                        Protocol = br.ReadByte();
+                        Name = ReadNullTerminatedString(ref br);
+                        Map = ReadNullTerminatedString(ref br);
+                        Folder = ReadNullTerminatedString(ref br);
+                        Game = ReadNullTerminatedString(ref br);
+                        ID = br.ReadInt16();
+                        Players = br.ReadByte();
+                        MaxPlayers = br.ReadByte();
+                        Bots = br.ReadByte();
+                        ServerType = (ServerTypeFlags)br.ReadByte();
+                        Environment = (EnvironmentFlags)br.ReadByte();
+                        Visibility = (VisibilityFlags)br.ReadByte();
+                        VAC = (VACFlags)br.ReadByte();
+                        Version = ReadNullTerminatedString(ref br);
+                        ExtraDataFlag = (ExtraDataFlags)br.ReadByte();
+                        #region These EDF readers have to be in this order because that's the way they are reported
+                        if (ExtraDataFlag.HasFlag(ExtraDataFlags.Port))
+                            Port = br.ReadInt16();
+                        if (ExtraDataFlag.HasFlag(ExtraDataFlags.SteamID))
+                            SteamID = br.ReadUInt64();
+                        if (ExtraDataFlag.HasFlag(ExtraDataFlags.Spectator))
+                        {
+                            SpectatorPort = br.ReadInt16();
+                            Spectator = ReadNullTerminatedString(ref br);
+                        }
+                        if (ExtraDataFlag.HasFlag(ExtraDataFlags.Keywords))
+                            Keywords = ReadNullTerminatedString(ref br);
+                        if (ExtraDataFlag.HasFlag(ExtraDataFlags.GameID))
+                            GameID = br.ReadUInt64();
+                        #endregion
+                        IsValid = true;
+                        br.Close();
+
+                        ms.Close();
+                    }
+                    udp.Close();
+                }
             }
-            if (ExtraDataFlag.HasFlag(ExtraDataFlags.Keywords))
-                Keywords = ReadNullTerminatedString(ref br);
-            if (ExtraDataFlag.HasFlag(ExtraDataFlags.GameID))
-                GameID = br.ReadUInt64();
-            #endregion
-            br.Close();
-            ms.Close();
-            udp.Close();
+            catch
+            {
+
+            }
         }
         /// <summary>Reads a null-terminated string into a .NET Framework compatible string.</summary>
         /// <param name="input">Binary reader to pull the null-terminated string from.  Make sure it is correctly positioned in the stream before calling.</param>

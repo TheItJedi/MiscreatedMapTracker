@@ -19,6 +19,8 @@ myApp.controller('MyCtrl', ['$scope', '$firebaseArray', '$timeout', '$cookies', 
     $scope.Notes = "";
     $scope.mapMarkers = {};
     $scope.mapMarkerGroups = {};
+    $scope.serversFound = {};
+    $scope.serversToAdd = [];
 
     firebase.auth().onAuthStateChanged(function (user) {
         window.user = user; // user is undefined if no user signed in
@@ -145,10 +147,44 @@ myApp.controller('MyCtrl', ['$scope', '$firebaseArray', '$timeout', '$cookies', 
         .catch(function (error) {
             console.log("Error:Loading Locations", error);
         });
+    $scope.servers.$loaded()
+        .then(function (x) {
+            console.log('Servers');
+            var srvlegend = L.control({ position: 'topright' });
+
+            srvlegend.onAdd = function (map) {
+
+                var div = L.DomUtil.create('div', 'info legend');
+
+                // loop through our density intervals and generate a label with a colored square for each interval
+                for (var i = 0; i < x.length; i++) {
+                    var percentFull = Math.floor((x[i].NumPlayers / x[i].MaxPlayers) * 100)
+                    var fullClass = "empty";
+                    if (percentFull <= 25)
+                        fullClass = "low";
+                    else if (percentFull <= 50)
+                        fullClass = "med";
+                    else if (percentFull >= 75)
+                        fullClass = "high";
+                
+                    if (x[i].NumPlayers >= 0) {
+                        div.innerHTML +=
+                            '<span class="' + fullClass + '">' + x[i].NumPlayers + '/' + x[i].MaxPlayers + '</span>   ' + x[i].Name + '<br>';
+                    }
+                }
+
+                return div;
+            };
+            srvlegend.addTo($scope.map);
+        })
+        .catch(function (error) {
+            console.log("Error:Loading Servers", error);
+        });
+
     $scope.locTypes.$loaded()
         .then(function (x) {
             console.log('Location Types Loaded');
-            var legend = L.control({ position: 'topright' });
+            var legend = L.control({ position: 'bottomright' });
 
             legend.onAdd = function (map) {
 
@@ -181,32 +217,110 @@ myApp.controller('MyCtrl', ['$scope', '$firebaseArray', '$timeout', '$cookies', 
     $scope.openAddServer = function () {
         $('#addServerModal').modal('show');
     };
-    $scope.addServer = function (isValid) {
+    $scope.isIPEntered = function () {
+        if ($scope.serverIP && $scope.serverIP.length > 0)
+            return true;
+        else
+            return false;
+    }
+    $scope.foundServers = function () {
+        if ($scope.serversFound && $scope.serversFound.length > 0)
+            return true;
+        else
+            return false;
+    }
+    $scope.addServerToList = function (ip, port) {
+        console.log('Adding Server to List' + ip + ':' + port);
+        $scope.serversToAdd.push({IP: ip,
+            Port: port
+        });
+    }
+    $scope.haveServersToAdd = function ()
+    {
+        if ($scope.serversToAdd && $scope.serversToAdd.length > 0)
+            return true;
+        else
+            return false;
+    }
+    $scope.findByIP = function (isValid) {
+        $scope.serversFound = [];
+        $scope.serversToAdd = [];
         if (isValid) {
             $http({
                 method: 'GET',
-                url: '/api/ServerInfo/?Port=' + $scope.serverPort + '&IP=' + $scope.serverIP
+                url: '/servers/ByIP/' + $scope.serverIP +'/'
             }).then(function successCallback(response) {
-                //console.log(response.data);
-                // this callback will be called asynchronously
-                // when the response is available
-                $scope.servers.$add({
-                    MaxPlayers: response.data.MaxPlayers,
-                    NumPlayers: response.data.NumPlayers,
-                    DtLastUpdated: moment().toString(),
-                    Name: response.data.Name,
-                    IP: $scope.serverIP,
-                    Port: $scope.serverPort
-                }).then(function (ref) {
-                    //console.log(ref);
-                    $('#addServerModal').modal('hide');
-                });
-
-            }, function errorCallback(response) {
-                console.log('Error ' + resposne);
-                // called asynchronously if an error occurs
-                // or server returns response with an error status.
+                console.log('Success ' + response);
+                //alert(JSON.stringify(response.data));
+                $scope.serversFound = response.data;
+            },
+                function errorCallback(response) {
+                    console.log('Error ' + response);
+               
             });
+        }
+    };
+    //$scope.addServer = function (isValid) {
+    //    if (isValid) {
+    //        $http({
+    //            method: 'GET',
+    //            url: '/api/ServerInfo/?Port=' + $scope.serverPort + '&IP=' + $scope.serverIP
+    //        }).then(function successCallback(response) {
+    //            //console.log(response.data);
+    //            // this callback will be called asynchronously
+    //            // when the response is available
+    //            $scope.servers.$add({
+    //                MaxPlayers: response.data.MaxPlayers,
+    //                NumPlayers: response.data.NumPlayers,
+    //                DtLastUpdated: moment().toString(),
+    //                Name: response.data.Name,
+    //                IP: $scope.serverIP,
+    //                Port: $scope.serverPort,
+    //                refreshInterval:5
+    //            }).then(function (ref) {
+    //                //console.log(ref);
+    //                $('#addServerModal').modal('hide');
+    //            });
+
+    //        }, function errorCallback(response) {
+    //            console.log('Error ' + resposne);
+    //            // called asynchronously if an error occurs
+    //            // or server returns response with an error status.
+    //        });
+    //    }
+    //};
+    $scope.addServers = function (isValid) {
+        if (isValid) {
+            angular.forEach($scope.serversToAdd, function (server) {
+                $http({
+                    method: 'GET',
+                    url: '/api/ServerInfo/?Port=' + server.Port + '&IP=' + server.IP
+                }).then(function successCallback(response) {
+                    //console.log(response.data);
+                    // this callback will be called asynchronously
+                    // when the response is available
+                    $scope.servers.$add({
+                        MaxPlayers: response.data.MaxPlayers,
+                        NumPlayers: response.data.NumPlayers,
+                        DtLastUpdated: moment().toString(),
+                        Name: response.data.Name,
+                        IP: server.IP,
+                        Port: server.Port,
+                        refreshInterval: 5,
+                        TimeOfDay: response.data.TimeOfDay
+                    }).then(function (ref) {
+                        //console.log(ref);
+                        
+                    });
+
+                }, function errorCallback(response) {
+                    console.log('Error ' + resposne);
+                    // called asynchronously if an error occurs
+                    // or server returns response with an error status.
+                });
+            });
+            $('#addServerModal').modal('hide');
+            
         }
     };
     $scope.refreshServer = function (key, alertIfChanged) {

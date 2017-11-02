@@ -8,23 +8,32 @@
             </div>
             <div class="modal-body">
                 <form class="form-horizontal" name="addServerForm">
-                    <div class="form-group">
-                        <label for="inputEmail3" class="col-sm-2 control-label">Server IP</label>
-                        <div class="col-sm-10">
-                            <input type="text" class="form-control" id="inputEmail3" placeholder="Enter the IP of the Server" ng-model="serverIP" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="inputEmail3" class="col-sm-2 control-label">Port</label>
-                        <div class="col-sm-10">
-                            <input type="text" class="form-control" id="inputEmail3" placeholder="Enter the port of the Server" ng-model="serverPort" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
-                        </div>
-                    </div>
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="inputEmail3" placeholder="Enter the IP of the Server" ng-model="serverIP" ng-required="true" ng-minlength="3" ng-maxlength="30" required>
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default" ng-click="findByIP(addServerForm.$valid)">Search</button>
+                                </span>
+                            </div><!-- /input-group -->
+                        </div><!-- /.col-lg-6 -->
+                    </div><!-- /.row -->
+                    <br />
+                    <div class="row" ng-repeat="server in serversFound">
+                        <div class="col-lg-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="{{server.Name}}">
+                                <span class="input-group-addon">
+                                    <input type="checkbox" aria-label="..." ng-model="serverChecked" ng-change="addServerToList(server.IPAddress,server.Port)">
+                                </span>
+                            </div><!-- /input-group -->
+                        </div><!-- /.col-lg-6 -->
+                    </div><!-- /.row -->
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" ng-click="addServer(addServerForm.$valid)">Add Server</button>
+                <button type="button" class="btn btn-primary" ng-click="addServers(true)">Add Server(s)</button>
             </div>
         </div>
     </div>

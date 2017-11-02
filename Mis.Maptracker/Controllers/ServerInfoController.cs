@@ -13,7 +13,10 @@ namespace Mis.Maptracker.Controllers
         public ServerInfo Get(string IP = "162.244.55.44", int Port = 64152)
         {
             var serverINfo = new A2S_INFO(new IPEndPoint(IPAddress.Parse(IP), Port));
-            return new ServerInfo(serverINfo);
+            if (serverINfo.IsValid)
+                return new ServerInfo(serverINfo);
+            else
+                return null;
         }
     }
 
