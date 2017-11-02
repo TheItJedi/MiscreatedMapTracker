@@ -69,3 +69,7 @@ body {
 .leaflet-container {
     cursor: crosshair !important;
 }
+input.ng-invalid {
+    border-color: red;
+    outline-color: red;
+}

@@ -260,6 +260,24 @@ myApp.controller('MyCtrl', ['$scope', '$firebaseArray', '$timeout', '$cookies', 
             });
         }
     };
+    $scope.findByName = function (isValid) {
+        $scope.serversFound = [];
+        $scope.serversToAdd = [];
+        if (isValid) {
+            $http({
+                method: 'GET',
+                url: '/servers/ByName/' + $scope.serverName + '/'
+            }).then(function successCallback(response) {
+                console.log('Success ' + response);
+                //alert(JSON.stringify(response.data));
+                $scope.serversFound = response.data;
+            },
+                function errorCallback(response) {
+                    console.log('Error ' + response);
+
+                });
+        }
+    };
     //$scope.addServer = function (isValid) {
     //    if (isValid) {
     //        $http({

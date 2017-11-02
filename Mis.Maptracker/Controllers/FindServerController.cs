@@ -18,5 +18,21 @@ namespace Mis.Maptracker.Controllers
             var servers = finder.FindAtIP(IP);
             return servers;
         }
+        [Route("servers/All/")]
+        [HttpGet]
+        public List<MiscreatedServer> All()
+        {
+            ServerFinder finder = new ServerFinder();
+            var servers = finder.FindAll();
+            return servers;
+        }
+        [Route("servers/ByName/{Name}")]
+        [HttpGet]
+        public List<MiscreatedServer> ByName(string Name = "")
+        {
+            ServerFinder finder = new ServerFinder();
+            var servers = finder.FindAll();
+            return servers.Where(s => s.Name.ToLowerInvariant().Contains(Name.ToLowerInvariant())).ToList();
+        }
     }
 }
